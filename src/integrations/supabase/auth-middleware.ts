@@ -39,9 +39,15 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       return next({
         context: {
-          supabase: null,
+          supabase: null as unknown as ReturnType<typeof createClient<Database>>,
           userId: "00000000-0000-4000-8000-000000000002",
-          claims: { sub: "00000000-0000-4000-8000-000000000002" },
+          claims: {
+            sub: "00000000-0000-4000-8000-000000000002",
+          } as unknown as NonNullable<
+            Awaited<
+              ReturnType<ReturnType<typeof createClient<Database>>["auth"]["getClaims"]>
+            >["data"]
+          >["claims"],
         },
       });
     }

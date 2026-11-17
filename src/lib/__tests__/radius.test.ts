@@ -628,4 +628,69 @@ describe("enterprise: graph-layout (computeAutoLayout)", () => {
     assert.ok((byId.get("payments-service")?.x ?? 0) < (byId.get("iam-role-payments")?.x ?? 0));
     assert.ok((byId.get("iam-role-payments")?.x ?? 0) < (byId.get("customer-db")?.x ?? 0));
   });
+
+  it("handles empty resource list and single-node columns cleanly", () => {
+    assert.deepEqual(computeAutoLayout([], []), []);
+    const single = computeAutoLayout([DEMO_RESOURCES[0]!], []);
+    assert.equal(single.length, 1);
+    assert.equal(single[0]?.x, 560); // role column
+    assert.equal(single[0]?.y, 230); // vertical midpoint
+  });
+});
+
+describe("enterprise: edge cases & defensive parsing", () => {
+  it("throws descriptive errors on malformed IaC or empty topology JSON", () => {
+    assert.throws(() => parseIacPayload("not-json", DEMO_RESOURCES));
+    assert.throws(() => parseIacPayload("[]", DEMO_RESOURCES));
+    assert.throws(() => parseTopologyPayload({ resources: [] }));
+  });
+
+  it("ignores Deny statements when extracting IAM policy actions", () => {
+    const iamWithDeny = {
+      role: "iam-role-payments",
+      Statement: [
+        {
+          Effect: "Deny",
+          Action: ["*"],
+          Resource: ["*"],
+        },
+        {
+          Effect: "Allow",
+          Action: ["s3:GetObject"],
+          Resource: ["arn:aws:s3:::payments-bucket/*"],
+        },
+      ],
+    };
+
+    const parsed = parseIacPayload(iamWithDeny, DEMO_RESOURCES);
+    assert.equal(parsed.scopeBroadened, false);
+    assert.deepEqual(parsed.detectedActions, ["s3:GetObject"]);
+  });
+
+  it("returns keep verdict when all granted actions and resources are actively used without wildcards", () => {
+    const fixedNow = new Date("2026-11-17T12:00:00Z").getTime();
+    const res = evaluateHypothesisUsage(
+      {
+        id: "h-keep",
+        sid: "LeastPrivRole",
+        file: "iam.tf",
+        role_arn: "arn:aws:iam::123:role/least-priv",
+        granted_actions: ["s3:GetObject", "s3:ListBucket"],
+        granted_resources: ["arn:aws:s3:::payments-bucket/*"],
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-11-25T00:00:00Z",
+        window_days: 14,
+        used: [
+          { action: "s3:GetObject", count: 150, resources: ["arn:aws:s3:::payments-bucket/*"] },
+          { action: "s3:ListBucket", count: 12, resources: ["arn:aws:s3:::payments-bucket/*"] },
+        ],
+        status: "evidence",
+      },
+      fixedNow,
+    );
+
+    assert.ok(res);
+    assert.equal(res.verdict, "keep");
+    assert.equal(res.status, "active");
+  });
 });

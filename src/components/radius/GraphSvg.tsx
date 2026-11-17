@@ -9,8 +9,8 @@ interface Highlight {
 interface GraphSvgProps {
   resources: RadiusResource[];
   edges: RadiusEdge[];
-  highlight?: Highlight;
-  onSelectNode?: (id: string) => void;
+  highlight?: Highlight | undefined;
+  onSelectNode?: ((id: string) => void) | undefined;
 }
 
 export function GraphSvg({ resources, edges, highlight, onSelectNode }: GraphSvgProps) {
