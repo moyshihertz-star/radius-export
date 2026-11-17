@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useConsole } from "@/hooks/useConsole";
 import { GraphSvg } from "@/components/radius/GraphSvg";
 import { MapWalkthrough } from "@/components/radius/MapWalkthrough";
+import { computeAutoLayout } from "@/lib/graph-layout";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/app/map")({
@@ -22,15 +24,79 @@ export const Route = createFileRoute("/_authenticated/app/map")({
   component: MapPage,
 });
 
+type FilterMode = "all" | "high" | "pii";
+
 function MapPage() {
   const { data, isLoading } = useConsole();
   const { t } = useI18n();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [autoLayout, setAutoLayout] = useState(false);
+
+  const displayedResources = useMemo(() => {
+    if (!data) return [];
+    const base = autoLayout ? computeAutoLayout(data.resources, data.edges) : data.resources;
+    const q = search.trim().toLowerCase();
+    return base.filter((r) => {
+      if (filter === "high" && r.sensitivity !== "high") return false;
+      if (filter === "pii" && !r.tags.includes("pii") && !r.tags.includes("compliance")) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        r.name.toLowerCase().includes(q) ||
+        r.key.toLowerCase().includes(q) ||
+        r.tags.some((tag) => tag.toLowerCase().includes(q))
+      );
+    });
+  }, [data, autoLayout, filter, search]);
 
   return (
     <>
       <div className="panel">
-        <div className="panel-head">
+        <div className="panel-head" style={{ flexWrap: "wrap", gap: 10 }}>
           <h3>{t("map.title")}</h3>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              type="text"
+              placeholder={t("map.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                background: "var(--panel-2)",
+                border: "1px solid var(--hairline)",
+                color: "var(--fg)",
+                padding: "5px 10px",
+                borderRadius: 6,
+                fontSize: 12.5,
+              }}
+            />
+            {(["all", "high", "pii"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`tab-btn ${filter === mode ? "active" : ""}`}
+                style={{ padding: "5px 10px", fontSize: 12 }}
+                onClick={() => setFilter(mode)}
+              >
+                {t(
+                  mode === "all"
+                    ? "map.filterAll"
+                    : mode === "high"
+                      ? "map.filterHigh"
+                      : "map.filterPii",
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="btn-ghost"
+              style={{ padding: "5px 12px", fontSize: 12 }}
+              onClick={() => setAutoLayout((v) => !v)}
+            >
+              {autoLayout ? t("map.savedLayout") : t("map.autoLayout")}
+            </button>
+          </div>
         </div>
         <div className="map-legend">
           <span>
@@ -54,7 +120,7 @@ function MapPage() {
           {isLoading || !data ? (
             <div className="empty-note">{t("map.loading")}</div>
           ) : (
-            <GraphSvg resources={data.resources} edges={data.edges} />
+            <GraphSvg resources={displayedResources} edges={data.edges} />
           )}
         </div>
       </div>

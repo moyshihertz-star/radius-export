@@ -72,6 +72,21 @@ export interface ConsoleData {
   changes: RadiusChange[];
 }
 
+export interface AuditEntry {
+  id: string;
+  action: string;
+  actorName: string | null;
+  changeId: string | null;
+  details: string;
+  createdAt: string;
+}
+
+export interface AuditAndCiData {
+  orgName: string;
+  ingestKey: string;
+  entries: AuditEntry[];
+}
+
 export const TYPE_COLOR: Record<ResourceType, string> = {
   role: "#FF7A45",
   service: "#4C86FF",

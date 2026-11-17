@@ -41,13 +41,15 @@ CREATE TABLE public.agent_runs (
 
 CREATE INDEX agent_runs_org_ran_idx ON public.agent_runs (org_id, ran_at DESC);
 
-GRANT SELECT ON public.agent_runs TO authenticated;
+GRANT SELECT, INSERT ON public.agent_runs TO authenticated;
 GRANT ALL ON public.agent_runs TO service_role;
 
 ALTER TABLE public.agent_runs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "org agent runs select" ON public.agent_runs
   FOR SELECT TO authenticated USING (org_id = (SELECT public.current_org_id()));
+CREATE POLICY "org agent runs insert" ON public.agent_runs
+  FOR INSERT TO authenticated WITH CHECK (org_id = (SELECT public.current_org_id()));
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.hypotheses;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.agent_runs;

@@ -13,6 +13,7 @@ const TABS = [
   { to: "/app/map", key: "nav.map" },
   { to: "/app/policy", key: "nav.policy" },
   { to: "/app/runs", key: "nav.runs" },
+  { to: "/app/audit", key: "nav.audit" },
 ] as const;
 
 function ConsoleLayout() {

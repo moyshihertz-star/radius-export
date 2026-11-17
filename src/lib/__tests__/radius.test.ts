@@ -16,6 +16,9 @@ import {
   summarize,
 } from "../hypotheses-engine.server.ts";
 import { daysLeftTone } from "../hypotheses-types.ts";
+import { parseIacPayload } from "../iac-parser.ts";
+import { evaluateHypothesisUsage } from "../agent-runner.server.ts";
+import { computeAutoLayout } from "../graph-layout.ts";
 
 const DEFAULT_WEIGHTS: PolicyWeights = {
   threshold: 70,
@@ -460,5 +463,153 @@ describe("hypotheses-engine", () => {
     });
     assert.equal(run.id, 7);
     assert.equal(run.summary, JSON.stringify({ checked: 6, reduced: 2 }, null, 2));
+  });
+});
+
+describe("enterprise: iac-parser (parseIacPayload)", () => {
+  it("parses Terraform plan JSON (terraform show -json) and detects wildcard + target + new access", () => {
+    const tfPlan = {
+      resource_changes: [
+        {
+          address: "aws_iam_role_policy.payments_policy",
+          name: "payments_policy",
+          change: {
+            after: {
+              role: "iam-role-payments",
+              policy: JSON.stringify({
+                Version: "2012-10-17",
+                Statement: [
+                  {
+                    Effect: "Allow",
+                    Action: ["s3:*", "rds:Connect"],
+                    Resource: ["arn:aws:rds:us-east-1:123456789012:db/customer-db"],
+                  },
+                ],
+              }),
+            },
+          },
+        },
+      ],
+    };
+
+    const parsed = parseIacPayload(tfPlan, DEMO_RESOURCES);
+    assert.equal(parsed.title, "tf: aws_iam_role_policy.payments_policy");
+    assert.equal(parsed.targetResourceId, "iam-role-payments");
+    assert.equal(parsed.newAccessResourceId, "customer-db");
+    assert.equal(parsed.scopeBroadened, true);
+    assert.deepEqual(parsed.detectedActions, ["s3:*", "rds:Connect"]);
+  });
+
+  it("parses raw AWS IAM Policy JSON with specific actions (scopeBroadened = false)", () => {
+    const iamJson = JSON.stringify({
+      role: "admin-console",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: ["s3:GetObject"],
+          Resource: ["arn:aws:s3:::payments-bucket/reports/*"],
+        },
+      ],
+    });
+
+    const parsed = parseIacPayload(iamJson, DEMO_RESOURCES);
+    assert.equal(parsed.targetResourceId, "admin-console");
+    assert.equal(parsed.newAccessResourceId, "s3-payments-bucket");
+    assert.equal(parsed.scopeBroadened, false);
+  });
+});
+
+describe("enterprise: agent-runner (evaluateHypothesisUsage)", () => {
+  const fixedNow = new Date("2026-11-17T12:00:00Z").getTime();
+
+  it("proposes remove when zero actions were observed", () => {
+    const res = evaluateHypothesisUsage(
+      {
+        id: "h-remove",
+        sid: "UnusedRole",
+        file: "iam.tf",
+        role_arn: "arn:aws:iam::123:role/unused",
+        granted_actions: ["s3:GetObject", "s3:PutObject"],
+        granted_resources: ["arn:aws:s3:::payments/*"],
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-11-20T00:00:00Z",
+        window_days: 14,
+        used: [],
+        status: "active",
+      },
+      fixedNow,
+    );
+
+    assert.ok(res);
+    assert.equal(res.verdict, "remove");
+    assert.equal(res.status, "pr_open");
+    assert.deepEqual(res.reduced, { Action: [], Resource: [] });
+  });
+
+  it("proposes reduce when wildcard or superset of actions was granted", () => {
+    const res = evaluateHypothesisUsage(
+      {
+        id: "h-reduce",
+        sid: "WildcardS3",
+        file: "iam.tf",
+        role_arn: "arn:aws:iam::123:role/payments",
+        granted_actions: ["s3:*"],
+        granted_resources: ["*"],
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-11-20T00:00:00Z",
+        window_days: 14,
+        used: [
+          {
+            action: "s3:GetObject",
+            count: 19,
+            resources: ["arn:aws:s3:::payments/*"],
+          },
+        ],
+        status: "evidence",
+      },
+      fixedNow,
+    );
+
+    assert.ok(res);
+    assert.equal(res.verdict, "reduce");
+    assert.equal(res.status, "pr_open");
+    assert.deepEqual(res.reduced, {
+      Action: ["s3:GetObject"],
+      Resource: ["arn:aws:s3:::payments/*"],
+    });
+  });
+
+  it("skips terminal statuses (merged / kept_with_reason)", () => {
+    const res = evaluateHypothesisUsage(
+      {
+        id: "h-kept",
+        sid: "KeptRole",
+        file: "iam.tf",
+        role_arn: "arn:aws:iam::123:role/kept",
+        granted_actions: ["s3:*"],
+        granted_resources: ["*"],
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-11-20T00:00:00Z",
+        window_days: 14,
+        used: [],
+        status: "kept_with_reason",
+      },
+      fixedNow,
+    );
+    assert.equal(res, null);
+  });
+});
+
+describe("enterprise: graph-layout (computeAutoLayout)", () => {
+  it("organizes resources into hierarchical columns by dependency layer", () => {
+    const zeroed = DEMO_RESOURCES.map((r) => ({ ...r, x: 0, y: 0 }));
+    const laidOut = computeAutoLayout(zeroed, DEMO_EDGES);
+    const byId = new Map(laidOut.map((r) => [r.id, r]));
+
+    assert.equal(laidOut.length, DEMO_RESOURCES.length);
+    // Entry/external column < Core service column < Role column < Data store column
+    assert.ok((byId.get("third-party-webhook")?.x ?? 0) < (byId.get("payments-service")?.x ?? 0));
+    assert.ok((byId.get("payments-service")?.x ?? 0) < (byId.get("iam-role-payments")?.x ?? 0));
+    assert.ok((byId.get("iam-role-payments")?.x ?? 0) < (byId.get("customer-db")?.x ?? 0));
   });
 });

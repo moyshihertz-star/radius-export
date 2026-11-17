@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as AuthenticatedAppAuditRouteImport } from './routes/_authenticated/app.audit'
 import { Route as AuthenticatedAppChangesRouteImport } from './routes/_authenticated/app.changes'
 import { Route as AuthenticatedAppHypothesesRouteImport } from './routes/_authenticated/app.hypotheses'
 import { Route as AuthenticatedAppMapRouteImport } from './routes/_authenticated/app.map'
@@ -36,6 +37,11 @@ const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppAuditRoute = AuthenticatedAppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
 const AuthenticatedAppChangesRoute = AuthenticatedAppChangesRouteImport.update({
@@ -68,6 +74,7 @@ const AuthenticatedAppRunsRoute = AuthenticatedAppRunsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AuthenticatedAppRouteWithChildren
+  '/app/audit': typeof AuthenticatedAppAuditRoute
   '/app/changes': typeof AuthenticatedAppChangesRoute
   '/app/hypotheses': typeof AuthenticatedAppHypothesesRoute
   '/app/map': typeof AuthenticatedAppMapRoute
@@ -77,6 +84,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/audit': typeof AuthenticatedAppAuditRoute
   '/app/changes': typeof AuthenticatedAppChangesRoute
   '/app/hypotheses': typeof AuthenticatedAppHypothesesRoute
   '/app/map': typeof AuthenticatedAppMapRoute
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/app/audit': typeof AuthenticatedAppAuditRoute
   '/_authenticated/app/changes': typeof AuthenticatedAppChangesRoute
   '/_authenticated/app/hypotheses': typeof AuthenticatedAppHypothesesRoute
   '/_authenticated/app/map': typeof AuthenticatedAppMapRoute
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/app/audit'
     | '/app/changes'
     | '/app/hypotheses'
     | '/app/map'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app/audit'
     | '/app/changes'
     | '/app/hypotheses'
     | '/app/map'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/app'
+    | '/_authenticated/app/audit'
     | '/_authenticated/app/changes'
     | '/_authenticated/app/hypotheses'
     | '/_authenticated/app/map'
@@ -164,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/audit': {
+      id: '/_authenticated/app/audit'
+      path: '/audit'
+      fullPath: '/app/audit'
+      preLoaderRoute: typeof AuthenticatedAppAuditRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/changes': {
       id: '/_authenticated/app/changes'
       path: '/changes'
@@ -203,6 +222,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppAuditRoute: typeof AuthenticatedAppAuditRoute
   AuthenticatedAppChangesRoute: typeof AuthenticatedAppChangesRoute
   AuthenticatedAppHypothesesRoute: typeof AuthenticatedAppHypothesesRoute
   AuthenticatedAppMapRoute: typeof AuthenticatedAppMapRoute
@@ -212,6 +232,7 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppAuditRoute: AuthenticatedAppAuditRoute,
   AuthenticatedAppChangesRoute: AuthenticatedAppChangesRoute,
   AuthenticatedAppHypothesesRoute: AuthenticatedAppHypothesesRoute,
   AuthenticatedAppMapRoute: AuthenticatedAppMapRoute,

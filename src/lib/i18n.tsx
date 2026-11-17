@@ -20,6 +20,7 @@ const EN: Record<string, string> = {
   "nav.map": "Dependency map",
   "nav.policy": "Policy",
   "nav.runs": "Agent runs",
+  "nav.audit": "Audit & CI",
   "nav.lang": "עברית",
   "nav.langTitle": "Switch to Hebrew",
 
@@ -92,6 +93,11 @@ const EN: Record<string, string> = {
   "modal.newAccessNone": "None",
   "modal.scope": "Broaden the permission scope to a wildcard (e.g. s3:* instead of one action)",
   "modal.run": "Run simulation",
+  "modal.importIac": "Import Terraform plan / IAM policy JSON",
+  "modal.iacPlaceholder": 'Paste terraform show -json or AWS IAM {"Statement":[...]} JSON…',
+  "modal.parseBtn": "Parse JSON",
+  "modal.parseSuccess": "Parsed IaC JSON and matched resources",
+  "modal.parseError": "Could not parse Terraform / IAM JSON",
 
   "map.title": "Full dependency map",
   "map.loading": "Loading map…",
@@ -99,6 +105,12 @@ const EN: Record<string, string> = {
   "map.legendService": "Service",
   "map.legendData": "Database / storage",
   "map.legendExternal": "External",
+  "map.searchPlaceholder": "Filter by name, key, or tag…",
+  "map.filterAll": "All",
+  "map.filterHigh": "High sensitivity",
+  "map.filterPii": "PII / Compliance",
+  "map.autoLayout": "Auto-layout",
+  "map.savedLayout": "Saved layout",
 
   "walk.title": "Example: what happens when this change ships",
   "walk.play": "Play example",
@@ -201,6 +213,23 @@ const EN: Record<string, string> = {
   "runs.title": "Agent runs",
   "runs.last": "last 50",
   "runs.empty": "The agent has not run yet.",
+  "runs.runNow": "Run agent now",
+  "runs.running": "Running…",
+  "runs.completed": "Agent run completed and hypotheses updated",
+  "runs.failed": "Agent run failed",
+
+  "audit.title": "Compliance audit trail",
+  "audit.exportCsv": "Export CSV",
+  "audit.exportJson": "Export JSON",
+  "audit.empty": "No audit events recorded yet.",
+  "audit.ciTitle": "CI/CD Webhook Gatekeeper",
+  "audit.ciSub":
+    "Send Terraform plans or IAM policy JSON from GitHub Actions to compute blast radius and gate high-risk merges automatically.",
+  "audit.endpoint": "Webhook endpoint",
+  "audit.ingestKey": "Organization ingest key",
+  "audit.exampleCurl": "Example CI command",
+  "audit.copy": "Copy",
+  "audit.copied": "Copied to clipboard",
 };
 
 const HE: Record<string, string> = {
@@ -209,6 +238,7 @@ const HE: Record<string, string> = {
   "nav.map": "מפת תלויות",
   "nav.policy": "מדיניות",
   "nav.runs": "ריצות סוכן",
+  "nav.audit": "ביקורת ו-CI",
   "nav.lang": "English",
   "nav.langTitle": "מעבר לאנגלית",
 
@@ -280,6 +310,11 @@ const HE: Record<string, string> = {
   "modal.newAccessNone": "ללא",
   "modal.scope": "הרחבת היקף ההרשאה ל-wildcard (למשל s3:* במקום פעולה ספציפית)",
   "modal.run": "הרץ סימולציה",
+  "modal.importIac": "ייבוא Terraform plan / IAM policy JSON",
+  "modal.iacPlaceholder": 'הדבק כאן terraform show -json או AWS IAM {"Statement":[...]}…',
+  "modal.parseBtn": "נתח JSON",
+  "modal.parseSuccess": "ה-JSON נותח והמשאבים הותאמו",
+  "modal.parseError": "לא ניתן לנתח את ה-JSON",
 
   "map.title": "מפת התלויות המלאה",
   "map.loading": "טוען מפה…",
@@ -287,6 +322,12 @@ const HE: Record<string, string> = {
   "map.legendService": "שירות",
   "map.legendData": "מאגר נתונים / אחסון",
   "map.legendExternal": "חיצוני",
+  "map.searchPlaceholder": "סינון לפי שם, מפתח או תגית…",
+  "map.filterAll": "הכל",
+  "map.filterHigh": "רגישות גבוהה",
+  "map.filterPii": "PII / ציות",
+  "map.autoLayout": "סידור אוטומטי",
+  "map.savedLayout": "סידור שמור",
 
   "walk.title": "דוגמה: מה קורה כששינוי כזה יוצא לדרך",
   "walk.play": "הרץ דוגמה",
@@ -385,6 +426,23 @@ const HE: Record<string, string> = {
   "runs.title": "ריצות סוכן",
   "runs.last": "50 האחרונות",
   "runs.empty": "הסוכן עדיין לא רץ.",
+  "runs.runNow": "הרץ סוכן עכשיו",
+  "runs.running": "מריץ…",
+  "runs.completed": "ריצת הסוכן הושלמה וההיפותזות עודכנו",
+  "runs.failed": "ריצת הסוכן נכשלה",
+
+  "audit.title": "יומן ביקורת וציות (Audit Log)",
+  "audit.exportCsv": "ייצוא CSV",
+  "audit.exportJson": "ייצוא JSON",
+  "audit.empty": "אין אירועי ביקורת עדיין.",
+  "audit.ciTitle": "חיבור Webhook ל-CI/CD",
+  "audit.ciSub":
+    "שלח תוכניות Terraform או מדיניות IAM מ-GitHub Actions לחישוב Blast Radius וחסימת מיזוגים בסיכון גבוה.",
+  "audit.endpoint": "כתובת ה-Webhook",
+  "audit.ingestKey": "מפתח Ingest ארגוני",
+  "audit.exampleCurl": "דוגמת הרצה מ-CI",
+  "audit.copy": "העתק",
+  "audit.copied": "הועתק ללוח",
 };
 
 const DICTS: Record<Lang, Record<string, string>> = { en: EN, he: HE };

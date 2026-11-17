@@ -10,6 +10,7 @@ import {
   simulate,
 } from "./radius-engine.server";
 import type {
+  AuditAndCiData,
   ConsoleData,
   PolicyWeights,
   RadiusChange,
@@ -311,4 +312,30 @@ export const previewPolicy = createServerFn({ method: "POST" })
       edges,
       clampWeights(data.weights),
     );
+  });
+
+export const getAuditAndCi = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AuditAndCiData> => {
+    const { supabase } = context as unknown as Ctx;
+
+    const [{ data: org, error: orgErr }, { data: logs, error: logErr }] = await Promise.all([
+      supabase.from("organizations").select("name, ingest_key").maybeSingle(),
+      supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(100),
+    ]);
+    if (orgErr) throw new Error(orgErr.message);
+    if (logErr) throw new Error(logErr.message);
+
+    return {
+      orgName: org?.name ?? "radius",
+      ingestKey: org?.ingest_key ?? "",
+      entries: (logs ?? []).map((row: Tables<"audit_log">) => ({
+        id: row.id,
+        action: row.action,
+        actorName: row.actor_name,
+        changeId: row.change_id,
+        details: JSON.stringify(row.details ?? {}),
+        createdAt: row.created_at,
+      })),
+    };
   });

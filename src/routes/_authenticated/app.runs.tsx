@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAgentRuns } from "@/hooks/useHypotheses";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { AGENT_RUNS_QUERY_KEY, HYPOTHESES_QUERY_KEY, useAgentRuns } from "@/hooks/useHypotheses";
+import { runHypothesesAgent } from "@/lib/hypotheses.functions";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/app/runs")({
@@ -22,7 +26,21 @@ export const Route = createFileRoute("/_authenticated/app/runs")({
 function RunsPage() {
   const { data, isLoading, error } = useAgentRuns();
   const { t, locale } = useI18n();
+  const queryClient = useQueryClient();
+  const runAgentFn = useServerFn(runHypothesesAgent);
   const runs = data ?? [];
+
+  const runMutation = useMutation({
+    mutationFn: () => runAgentFn(),
+    onSuccess: async () => {
+      toast.success(t("runs.completed"));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: AGENT_RUNS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: HYPOTHESES_QUERY_KEY }),
+      ]);
+    },
+    onError: () => toast.error(t("runs.failed")),
+  });
 
   if (isLoading) return <div className="empty-note">{t("runs.loading")}</div>;
   if (error) return <div className="empty-note">{t("runs.loadError")}</div>;
@@ -31,7 +49,16 @@ function RunsPage() {
     <div className="panel">
       <div className="panel-head">
         <h3>{t("runs.title")}</h3>
-        <span className="env-tag">{t("runs.last")}</span>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span className="env-tag">{t("runs.last")}</span>
+          <button
+            className="new-btn"
+            disabled={runMutation.isPending}
+            onClick={() => runMutation.mutate()}
+          >
+            {runMutation.isPending ? t("runs.running") : t("runs.runNow")}
+          </button>
+        </div>
       </div>
       {runs.length === 0 && <div className="empty-note">{t("runs.empty")}</div>}
       {runs.map((run) => (
