@@ -113,7 +113,8 @@ const EN: Record<string, string> = {
   "walk.s1.body":
     "{target} is highlighted. Everything connected to it is now a candidate for impact.",
   "walk.s2.title": "First hop: direct consumers",
-  "walk.s2.body": "{count} services call {target} directly and inherit the new permission instantly.",
+  "walk.s2.body":
+    "{count} services call {target} directly and inherit the new permission instantly.",
   "walk.s3.title": "Second and third hop: indirect reach",
   "walk.s3.body":
     "{count} more services reach it through another service. This is the part a code review never shows.",
@@ -143,6 +144,9 @@ const EN: Record<string, string> = {
   "policy.scopeBonusHint": "Points added for a blanket permission",
   "policy.complianceBonus": "PII / compliance exposure penalty",
   "policy.complianceBonusHint": "Points added for access to a resource tagged pii or compliance",
+  "policy.previewTitle": "Live simulation preview",
+  "policy.previewSub": "See how the draft weights affect an existing change before saving.",
+  "policy.previewSelect": "Preview change",
 
   "hyp.loading": "Loading hypotheses…",
   "hyp.loadError": "Failed to load hypotheses.",
@@ -325,6 +329,9 @@ const HE: Record<string, string> = {
   "policy.scopeBonusHint": "כמה נקודות מתווספות על הרשאה גורפת",
   "policy.complianceBonus": "קנס חשיפת PII / ציות",
   "policy.complianceBonusHint": "כמה נקודות מתווספות על גישה למשאב עם תגית pii או compliance",
+  "policy.previewTitle": "תצוגה מקדימה חיה",
+  "policy.previewSub": "בדוק כיצד המשקלים החדשים משפיעים על שינוי קיים לפני השמירה.",
+  "policy.previewSelect": "שינוי לבדיקה",
 
   "hyp.loading": "טוען היפותזות…",
   "hyp.loadError": "שגיאה בטעינת ההיפותזות.",

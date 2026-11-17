@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database, Json, Tables } from "@/integrations/supabase/types";
 import { z } from "zod";
 import {
   clampWeights,
   normalizeWeights,
+  resolveChangeSimulation,
   simulate,
-  type SimulateInput,
 } from "./radius-engine.server";
 import type {
   ConsoleData,
@@ -16,9 +18,10 @@ import type {
   SimulationResult,
 } from "./radius-types";
 
-type Ctx = { supabase: any; userId: string };
+type TypedSupabase = SupabaseClient<Database>;
+type Ctx = { supabase: TypedSupabase; userId: string };
 
-async function loadGraph(supabase: any) {
+async function loadGraph(supabase: TypedSupabase) {
   const [{ data: resources, error: rErr }, { data: edges, error: eErr }, { data: weights }] =
     await Promise.all([
       supabase.from("resources").select("*").order("key"),
@@ -28,7 +31,7 @@ async function loadGraph(supabase: any) {
   if (rErr) throw new Error(rErr.message);
   if (eErr) throw new Error(eErr.message);
 
-  const mappedResources: RadiusResource[] = (resources ?? []).map((r: any) => ({
+  const mappedResources: RadiusResource[] = (resources ?? []).map((r: Tables<"resources">) => ({
     id: r.id,
     key: r.key,
     name: r.name,
@@ -38,7 +41,7 @@ async function loadGraph(supabase: any) {
     x: r.x,
     y: r.y,
   }));
-  const mappedEdges: RadiusEdge[] = (edges ?? []).map((e: any) => ({
+  const mappedEdges: RadiusEdge[] = (edges ?? []).map((e: Tables<"edges">) => ({
     from: e.from_resource_id,
     to: e.to_resource_id,
   }));
@@ -56,17 +59,12 @@ async function loadGraph(supabase: any) {
   return { resources: mappedResources, edges: mappedEdges, weights: mappedWeights };
 }
 
-function toChange(
-  row: any,
+export function toChange(
+  row: Tables<"changes">,
   resources: RadiusResource[],
   edges: RadiusEdge[],
   weights: PolicyWeights,
 ): RadiusChange {
-  const input: SimulateInput = {
-    targetId: row.target_resource_id,
-    newAccessId: row.new_access_resource_id,
-    scopeBroadened: row.scope_broadened,
-  };
   return {
     id: row.id,
     title: row.title,
@@ -79,7 +77,7 @@ function toChange(
     decidedBy: row.decided_by,
     decidedAt: row.decided_at,
     createdAt: row.created_at,
-    simulation: simulate(input, resources, edges, weights),
+    simulation: resolveChangeSimulation(row, resources, edges, weights),
   };
 }
 
@@ -91,17 +89,18 @@ export const getConsole = createServerFn({ method: "GET" })
 
     const [{ data: changes, error }, { data: org }] = await Promise.all([
       supabase.from("changes").select("*").order("created_at", { ascending: false }),
-      supabase.from("organizations").select("name, ingest_key").maybeSingle(),
+      supabase.from("organizations").select("name").maybeSingle(),
     ]);
     if (error) throw new Error(error.message);
 
     return {
       orgName: org?.name ?? "radius",
-      ingestKey: org?.ingest_key ?? "",
       resources,
       edges,
       weights,
-      changes: (changes ?? []).map((c: any) => toChange(c, resources, edges, weights)),
+      changes: (changes ?? []).map((c: Tables<"changes">) =>
+        toChange(c, resources, edges, weights),
+      ),
     };
   });
 
@@ -114,6 +113,10 @@ export const createChange = createServerFn({ method: "POST" })
         targetResourceId: z.string().uuid(),
         newAccessResourceId: z.string().uuid().nullable().optional(),
         scopeBroadened: z.boolean().default(false),
+      })
+      .refine((v) => !v.newAccessResourceId || v.newAccessResourceId !== v.targetResourceId, {
+        message: "Target resource and new access resource must be different",
+        path: ["newAccessResourceId"],
       })
       .parse(input),
   )
@@ -137,19 +140,20 @@ export const createChange = createServerFn({ method: "POST" })
       .select("display_name, org_id")
       .eq("id", userId)
       .maybeSingle();
+    if (!profile?.org_id) throw new Error("Organization profile not found");
 
     const { data: inserted, error } = await supabase
       .from("changes")
       .insert({
-        org_id: profile?.org_id,
+        org_id: profile.org_id,
         title: data.title?.trim() || "Untitled custom change",
-        author: profile?.display_name || "you",
+        author: profile.display_name || "you",
         target_resource_id: data.targetResourceId,
         new_access_resource_id: data.newAccessResourceId ?? null,
         scope_broadened: data.scopeBroadened,
         score: result.score,
         verdict: result.verdict,
-        breakdown: result.breakdown,
+        breakdown: result.breakdown as unknown as Json,
         source: "manual",
       })
       .select("id")
@@ -157,11 +161,11 @@ export const createChange = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     await supabase.from("audit_log").insert({
-      org_id: profile?.org_id,
+      org_id: profile.org_id,
       change_id: inserted.id,
       action: "created",
       actor_id: userId,
-      actor_name: profile?.display_name ?? null,
+      actor_name: profile.display_name ?? null,
       details: { score: result.score, verdict: result.verdict },
     });
 
@@ -206,7 +210,7 @@ export const decideChange = createServerFn({ method: "POST" })
         status: data.decision,
         score: result.score,
         verdict: result.verdict,
-        breakdown: result.breakdown,
+        breakdown: result.breakdown as unknown as Json,
         decided_by: data.decision === "pending" ? null : userId,
         decided_at: data.decision === "pending" ? null : new Date().toISOString(),
       })
@@ -254,9 +258,10 @@ export const saveWeights = createServerFn({ method: "POST" })
       .select("org_id")
       .eq("id", userId)
       .maybeSingle();
+    if (!profile?.org_id) throw new Error("Organization profile not found");
 
     const { error } = await supabase.from("policy_weights").upsert({
-      org_id: profile?.org_id,
+      org_id: profile.org_id,
       threshold: w.threshold,
       sens_high_weight: w.sensHigh,
       sens_medium_weight: w.sensMedium,

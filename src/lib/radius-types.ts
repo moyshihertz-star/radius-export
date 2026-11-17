@@ -35,7 +35,6 @@ export interface BreakdownItem {
   params?: Record<string, string | number>;
 }
 
-
 export interface ConsumerHit {
   id: string;
   hop: number;
@@ -67,7 +66,6 @@ export interface RadiusChange {
 
 export interface ConsoleData {
   orgName: string;
-  ingestKey: string;
   resources: RadiusResource[];
   edges: RadiusEdge[];
   weights: PolicyWeights;
@@ -81,6 +79,3 @@ export const TYPE_COLOR: Record<ResourceType, string> = {
   storage: "#B26BFF",
   external: "#5B6672",
 };
-
-
-

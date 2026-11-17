@@ -1,10 +1,5 @@
 export type HypothesisStatus =
-  | "active"
-  | "evidence"
-  | "expired"
-  | "pr_open"
-  | "merged"
-  | "kept_with_reason";
+  "active" | "evidence" | "expired" | "pr_open" | "merged" | "kept_with_reason";
 
 export type HypothesisVerdict = "keep" | "reduce" | "remove";
 
@@ -68,16 +63,8 @@ export interface HypothesesData {
   summary: HypothesesSummary;
 }
 
-
-
 export function daysLeftTone(days: number): "ok" | "warn" | "bad" {
   if (days < 3) return "bad";
   if (days <= 7) return "warn";
   return "ok";
-}
-
-export function daysLeftLabel(days: number): string {
-  if (days < 0) return `פג לפני ${Math.abs(days)} ימים`;
-  if (days === 0) return "פג היום";
-  return `נותרו ${days} ימים`;
 }

@@ -13,7 +13,10 @@ export const Route = createFileRoute("/_authenticated/app/map")({
         content: "The full dependency map between services, permissions and data stores.",
       },
       { property: "og:title", content: "Dependency map — Radius" },
-      { property: "og:description", content: "The full dependency map of your cloud infrastructure." },
+      {
+        property: "og:description",
+        content: "The full dependency map of your cloud infrastructure.",
+      },
     ],
   }),
   component: MapPage,

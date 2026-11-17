@@ -87,7 +87,6 @@ export function MapWalkthrough({ data }: { data: ConsoleData }) {
           )}
         </div>
 
-
         <div className="walk-side">
           <div className="walk-change mono">{example.title}</div>
           <div className="walk-step-title">{t(`walk.s${step}.title`)}</div>
@@ -96,7 +95,9 @@ export function MapWalkthrough({ data }: { data: ConsoleData }) {
           </p>
 
           {step === TOTAL_STEPS - 1 && (
-            <div className={`walk-verdict verdict-${sim.verdict}`}>{t(`verdict.${sim.verdict}`)}</div>
+            <div className={`walk-verdict verdict-${sim.verdict}`}>
+              {t(`verdict.${sim.verdict}`)}
+            </div>
           )}
 
           <div className="walk-dots">

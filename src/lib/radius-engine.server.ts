@@ -1,5 +1,6 @@
 import type {
   BreakdownItem,
+  ChangeStatus,
   ConsumerHit,
   PolicyWeights,
   RadiusEdge,
@@ -17,19 +18,33 @@ export function bfsConsumers(
   edges: RadiusEdge[],
   maxHops: number,
 ): ConsumerHit[] {
+  const reverseAdj = new Map<string, string[]>();
+  for (const { from, to } of edges) {
+    const list = reverseAdj.get(to);
+    if (list) {
+      list.push(from);
+    } else {
+      reverseAdj.set(to, [from]);
+    }
+  }
+
   const visited = new Set<string>([targetId]);
   let frontier: string[] = [targetId];
   const found: ConsumerHit[] = [];
 
   for (let hop = 1; hop <= maxHops; hop++) {
     const next: string[] = [];
-    edges.forEach(({ from, to }) => {
-      if (frontier.includes(to) && !visited.has(from)) {
-        visited.add(from);
-        next.push(from);
-        found.push({ id: from, hop });
+    for (const node of frontier) {
+      const dependents = reverseAdj.get(node);
+      if (!dependents) continue;
+      for (const from of dependents) {
+        if (!visited.has(from)) {
+          visited.add(from);
+          next.push(from);
+          found.push({ id: from, hop });
+        }
       }
-    });
+    }
     if (next.length === 0) break;
     frontier = next;
   }
@@ -122,7 +137,6 @@ export function simulate(
     });
   }
 
-
   score = Math.min(100, Math.round(score));
   const verdict: Verdict =
     score >= weights.threshold
@@ -170,4 +184,63 @@ export function clampWeights(w: PolicyWeights): PolicyWeights {
     scopeBonus: clamp(w.scopeBonus, 0, 40),
     complianceBonus: clamp(w.complianceBonus, 0, 40),
   };
+}
+
+export function parseStoredBreakdown(raw: unknown): BreakdownItem[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const items: BreakdownItem[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const obj = entry as Record<string, unknown>;
+    if (typeof obj["label"] === "string" && typeof obj["points"] === "number") {
+      const item: BreakdownItem = {
+        label: obj["label"],
+        points: obj["points"],
+      };
+      if (typeof obj["key"] === "string") {
+        item.key = obj["key"];
+      }
+      if (obj["params"] && typeof obj["params"] === "object" && !Array.isArray(obj["params"])) {
+        item.params = obj["params"] as Record<string, string | number>;
+      }
+      items.push(item);
+    }
+  }
+  return items.length > 0 ? items : null;
+}
+
+export function resolveChangeSimulation(
+  row: {
+    target_resource_id: string;
+    new_access_resource_id: string | null;
+    scope_broadened: boolean;
+    status: ChangeStatus;
+    score: number | null;
+    verdict: Verdict | null;
+    breakdown: unknown;
+  },
+  resources: RadiusResource[],
+  edges: RadiusEdge[],
+  weights: PolicyWeights,
+): SimulationResult {
+  const liveSim = simulate(
+    {
+      targetId: row.target_resource_id,
+      newAccessId: row.new_access_resource_id,
+      scopeBroadened: row.scope_broadened,
+    },
+    resources,
+    edges,
+    weights,
+  );
+  const isDecided = row.status === "approved" || row.status === "blocked";
+  if (isDecided && row.score !== null && row.verdict !== null) {
+    return {
+      ...liveSim,
+      score: row.score,
+      verdict: row.verdict,
+      breakdown: parseStoredBreakdown(row.breakdown) ?? liveSim.breakdown,
+    };
+  }
+  return liveSim;
 }

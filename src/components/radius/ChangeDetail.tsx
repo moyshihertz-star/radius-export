@@ -110,7 +110,12 @@ export function ChangeDetail({ change, data, onDecide, deciding }: Props) {
             <h4>{t("detail.riskScore")}</h4>
             <div className="gauge-box">
               <svg width="150" height="80" viewBox="0 0 150 80">
-                <path d="M10,75 A65,65 0 0,1 140,75" fill="none" stroke="#242D38" strokeWidth="11" />
+                <path
+                  d="M10,75 A65,65 0 0,1 140,75"
+                  fill="none"
+                  stroke="#242D38"
+                  strokeWidth="11"
+                />
                 <path
                   d="M10,75 A65,65 0 0,1 140,75"
                   fill="none"

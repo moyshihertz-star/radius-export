@@ -28,9 +28,9 @@ GRANT ALL ON public.hypotheses TO service_role;
 ALTER TABLE public.hypotheses ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "org hypotheses select" ON public.hypotheses
-  FOR SELECT TO authenticated USING (org_id = public.current_org_id());
+  FOR SELECT TO authenticated USING (org_id = (SELECT public.current_org_id()));
 CREATE POLICY "org hypotheses update" ON public.hypotheses
-  FOR UPDATE TO authenticated USING (org_id = public.current_org_id()) WITH CHECK (org_id = public.current_org_id());
+  FOR UPDATE TO authenticated USING (org_id = (SELECT public.current_org_id())) WITH CHECK (org_id = (SELECT public.current_org_id()));
 
 CREATE TABLE public.agent_runs (
   id bigserial PRIMARY KEY,
@@ -47,7 +47,7 @@ GRANT ALL ON public.agent_runs TO service_role;
 ALTER TABLE public.agent_runs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "org agent runs select" ON public.agent_runs
-  FOR SELECT TO authenticated USING (org_id = public.current_org_id());
+  FOR SELECT TO authenticated USING (org_id = (SELECT public.current_org_id()));
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.hypotheses;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.agent_runs;

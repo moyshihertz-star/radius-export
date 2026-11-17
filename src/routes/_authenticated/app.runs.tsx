@@ -6,7 +6,10 @@ export const Route = createFileRoute("/_authenticated/app/runs")({
   head: () => ({
     meta: [
       { title: "Agent runs — Radius" },
-      { name: "description", content: "Run history of the Radius agent and a summary of each run." },
+      {
+        name: "description",
+        content: "Run history of the Radius agent and a summary of each run.",
+      },
       { property: "og:title", content: "Agent runs — Radius" },
       { property: "og:description", content: "When the agent ran and what it found each time." },
       { property: "og:type", content: "website" },

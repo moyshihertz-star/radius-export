@@ -37,7 +37,15 @@ export function NewChangeModal({ resources, busy, onClose, onSubmit }: Props) {
         </div>
         <div className="field">
           <label htmlFor="f_target">{t("modal.target")}</label>
-          <select id="f_target" value={target} onChange={(e) => setTarget(e.target.value)}>
+          <select
+            id="f_target"
+            value={target}
+            onChange={(e) => {
+              const nextTarget = e.target.value;
+              setTarget(nextTarget);
+              if (newAccess === nextTarget) setNewAccess("");
+            }}
+          >
             {resources.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
@@ -49,11 +57,13 @@ export function NewChangeModal({ resources, busy, onClose, onSubmit }: Props) {
           <label htmlFor="f_newaccess">{t("modal.newAccess")}</label>
           <select id="f_newaccess" value={newAccess} onChange={(e) => setNewAccess(e.target.value)}>
             <option value="">{t("modal.newAccessNone")}</option>
-            {resources.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
+            {resources
+              .filter((r) => r.id !== target)
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
           </select>
         </div>
         <div className="checkfield">

@@ -14,7 +14,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Radius — risk analysis for cloud infrastructure changes" },
       {
         property: "og:description",
-        content: "A transparent risk engine, a dependency map and a blast radius simulation for every change.",
+        content:
+          "A transparent risk engine, a dependency map and a blast radius simulation for every change.",
       },
     ],
   }),

@@ -12,7 +12,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 
-
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -34,7 +33,6 @@ function NotFoundComponent() {
     </div>
   );
 }
-
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
@@ -64,7 +62,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             Home
           </a>
         </div>
-
       </div>
     </div>
   );
@@ -106,7 +103,6 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" dir="ltr">
       <head>
-
         <HeadContent />
       </head>
       <body>
@@ -122,12 +118,16 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-    });
-    return () => data.subscription.unsubscribe();
+    try {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+        router.invalidate();
+        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      });
+      return () => data.subscription.unsubscribe();
+    } catch {
+      return undefined;
+    }
   }, [router, queryClient]);
 
   return (
@@ -140,6 +140,5 @@ function RootComponent() {
         </div>
       </LanguageProvider>
     </QueryClientProvider>
-
   );
 }

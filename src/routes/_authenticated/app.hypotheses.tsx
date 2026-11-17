@@ -19,7 +19,10 @@ export const Route = createFileRoute("/_authenticated/app/hypotheses")({
           "Permissions with an expiry date, what was actually used and what the agent proposes to reduce.",
       },
       { property: "og:title", content: "Permission hypotheses — Radius" },
-      { property: "og:description", content: "A permission either proves it is needed, or it goes." },
+      {
+        property: "og:description",
+        content: "A permission either proves it is needed, or it goes.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
