@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788219646201,
+      "tag": "0000_radius_core_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788630890396,
+      "tag": "0001_create_hypotheses",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788630944649,
+      "tag": "0002_seed_hypotheses_for_new_orgs",
+      "breakpoints": true
+    }
+  ]
+}
