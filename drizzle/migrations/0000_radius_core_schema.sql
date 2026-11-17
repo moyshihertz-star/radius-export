@@ -11,7 +11,7 @@ CREATE TABLE public.organizations (
   ingest_key TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'hex'),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-GRANT SELECT ON public.organizations TO authenticated;
+GRANT SELECT, UPDATE ON public.organizations TO authenticated;
 GRANT ALL ON public.organizations TO service_role;
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
@@ -40,6 +40,8 @@ CREATE INDEX profiles_org_idx ON public.profiles (org_id);
 
 CREATE POLICY "org members read their org" ON public.organizations
   FOR SELECT TO authenticated USING (id = (SELECT public.current_org_id()));
+CREATE POLICY "org members update their org" ON public.organizations
+  FOR UPDATE TO authenticated USING (id = (SELECT public.current_org_id())) WITH CHECK (id = (SELECT public.current_org_id()));
 
 CREATE POLICY "read own profile" ON public.profiles
   FOR SELECT TO authenticated USING (org_id = (SELECT public.current_org_id()));

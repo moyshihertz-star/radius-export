@@ -153,7 +153,11 @@ export function ChangeDetail({ change, data, onDecide, deciding }: Props) {
       <div className="action-row">
         <input
           type="text"
-          placeholder={t("detail.notePlaceholder")}
+          placeholder={
+            result.verdict === "high"
+              ? t("detail.noteRequiredPlaceholder")
+              : t("detail.notePlaceholder")
+          }
           value={note}
           onChange={(e) => setNote(e.target.value)}
           style={{
@@ -169,7 +173,11 @@ export function ChangeDetail({ change, data, onDecide, deciding }: Props) {
         <button
           className="btn-approve"
           onClick={() => onDecide("approved", note)}
-          disabled={deciding || change.status === "approved"}
+          disabled={
+            deciding ||
+            change.status === "approved" ||
+            (result.verdict === "high" && note.trim().length < 3)
+          }
         >
           {t("detail.approve")}
         </button>

@@ -316,14 +316,14 @@ export function parseTopologyPayload(rawInput: unknown): ParsedTopology {
     const type: ResourceType = validTypes.includes(rawType as ResourceType)
       ? (rawType as ResourceType)
       : inferTypeFromTfType(rawType);
-    const rawSens = typeof rec["sensitivity"] === "string" ? rec["sensitivity"] : "medium";
+    const tags = toStringList(rec["tags"]);
+    const rawSens = typeof rec["sensitivity"] === "string" ? rec["sensitivity"] : "";
     const validSens: Sensitivity[] = ["high", "medium", "low"];
     const sensitivity: Sensitivity = validSens.includes(rawSens as Sensitivity)
       ? (rawSens as Sensitivity)
-      : type === "database" || type === "role"
+      : type === "database" || type === "role" || tags.includes("pii")
         ? "high"
         : "medium";
-    const tags = toStringList(rec["tags"]);
     resources.push({
       key,
       name: typeof rec["name"] === "string" && rec["name"].trim() ? rec["name"].trim() : key,

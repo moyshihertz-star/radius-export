@@ -1,9 +1,13 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { Tables } from "@/integrations/supabase/types";
 import type { PolicyWeights } from "./radius-types";
 
 export function isSupabaseConfigured(): boolean {
   return Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_PUBLISHABLE_KEY"]);
 }
+
+const LOCAL_DB_PATH = resolve(process.cwd(), ".radius-local-db.json");
 
 const ORG_ID = "00000000-0000-4000-8000-000000000001";
 const USER_ID = "00000000-0000-4000-8000-000000000002";
@@ -593,9 +597,31 @@ function createInitialStore(): LocalStoreState {
 
 const g = globalThis as unknown as { __radiusLocalStore?: LocalStoreState };
 
+export function saveLocalStore(): void {
+  if (!g.__radiusLocalStore) return;
+  try {
+    writeFileSync(LOCAL_DB_PATH, JSON.stringify(g.__radiusLocalStore, null, 2), "utf-8");
+  } catch {
+    // Ignore write errors in read-only / serverless environments
+  }
+}
+
 export function getLocalStore(): LocalStoreState {
   if (!g.__radiusLocalStore) {
+    try {
+      if (existsSync(LOCAL_DB_PATH)) {
+        const raw = readFileSync(LOCAL_DB_PATH, "utf-8");
+        const parsed = JSON.parse(raw) as LocalStoreState;
+        if (parsed && parsed.org && Array.isArray(parsed.resources)) {
+          g.__radiusLocalStore = parsed;
+          return g.__radiusLocalStore;
+        }
+      }
+    } catch {
+      // Fall back to fresh initial store if file is missing or corrupt
+    }
     g.__radiusLocalStore = createInitialStore();
+    saveLocalStore();
   }
   return g.__radiusLocalStore;
 }

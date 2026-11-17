@@ -6,7 +6,7 @@ import type { Database, Json, Tables } from "@/integrations/supabase/types";
 import { evaluateHypothesisUsage } from "./agent-runner.server";
 import { mapAgentRun, mapHypothesis, summarize } from "./hypotheses-engine.server";
 import type { AgentRun, HypothesesData } from "./hypotheses-types";
-import { getLocalStore } from "./local-store.server";
+import { getLocalStore, saveLocalStore } from "./local-store.server";
 
 type Ctx = { supabase: SupabaseClient<Database> | null; userId: string };
 
@@ -88,6 +88,7 @@ export const keepWithReason = createServerFn({ method: "POST" })
         details: { hypothesis_id: data.id, reason: data.reason },
         created_at: new Date().toISOString(),
       });
+      saveLocalStore();
       return { ok: true };
     }
 
@@ -162,6 +163,7 @@ export const runHypothesesAgent = createServerFn({ method: "POST" })
         details: summaryPayload as unknown as Json,
         created_at: nextRun.ran_at,
       });
+      saveLocalStore();
 
       return mapAgentRun(nextRun);
     }

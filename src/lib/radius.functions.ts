@@ -5,7 +5,7 @@ import type { Database, Json, Tables } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { computeAutoLayout } from "./graph-layout";
 import { parseTopologyPayload } from "./iac-parser";
-import { getLocalStore } from "./local-store.server";
+import { getLocalStore, saveLocalStore } from "./local-store.server";
 import {
   clampWeights,
   normalizeWeights,
@@ -202,6 +202,7 @@ export const createChange = createServerFn({ method: "POST" })
         details: { score: result.score, verdict: result.verdict },
         created_at: nowIso,
       });
+      saveLocalStore();
       return { id };
     }
 
@@ -272,6 +273,13 @@ export const decideChange = createServerFn({ method: "POST" })
         edges,
         weights,
       );
+      if (
+        data.decision === "approved" &&
+        result.verdict === "high" &&
+        (!trimmedNote || trimmedNote.length < 3)
+      ) {
+        throw new Error("High-risk changes require a reviewer justification note (3+ chars)");
+      }
       const nowIso = new Date().toISOString();
       row.status = data.decision;
       row.score = result.score;
@@ -294,6 +302,7 @@ export const decideChange = createServerFn({ method: "POST" })
         },
         created_at: nowIso,
       });
+      saveLocalStore();
       return { ok: true };
     }
 
@@ -314,6 +323,13 @@ export const decideChange = createServerFn({ method: "POST" })
       edges,
       weights,
     );
+    if (
+      data.decision === "approved" &&
+      result.verdict === "high" &&
+      (!trimmedNote || trimmedNote.length < 3)
+    ) {
+      throw new Error("High-risk changes require a reviewer justification note (3+ chars)");
+    }
 
     const { error } = await supabase
       .from("changes")
@@ -381,6 +397,7 @@ export const saveWeights = createServerFn({ method: "POST" })
         details: w as unknown as Json,
         created_at: new Date().toISOString(),
       });
+      saveLocalStore();
       return w;
     }
 
@@ -603,6 +620,7 @@ export const syncCloudTopology = createServerFn({ method: "POST" })
         details: { addedResources, addedEdges },
         created_at: nowIso,
       });
+      saveLocalStore();
 
       return { addedResources, addedEdges };
     }
@@ -663,4 +681,51 @@ export const syncCloudTopology = createServerFn({ method: "POST" })
     });
 
     return { addedResources, addedEdges };
+  });
+
+export const rotateIngestKey = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ ingestKey: string }> => {
+    const { supabase, userId } = context as unknown as Ctx;
+    const newKey = `radius_ingest_${crypto.randomUUID().replace(/-/g, "")}`;
+
+    if (!supabase) {
+      const store = getLocalStore();
+      store.org.ingest_key = newKey;
+      store.auditLog.unshift({
+        id: crypto.randomUUID(),
+        org_id: store.org.id,
+        change_id: null,
+        action: "ingest_key_rotated",
+        actor_id: userId,
+        actor_name: store.displayName,
+        details: { key_prefix: newKey.slice(0, 18) + "…" },
+        created_at: new Date().toISOString(),
+      });
+      saveLocalStore();
+      return { ingestKey: newKey };
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("org_id, display_name")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile?.org_id) throw new Error("Organization profile not found");
+
+    const { error } = await supabase
+      .from("organizations")
+      .update({ ingest_key: newKey })
+      .eq("id", profile.org_id);
+    if (error) throw new Error(error.message);
+
+    await supabase.from("audit_log").insert({
+      org_id: profile.org_id,
+      action: "ingest_key_rotated",
+      actor_id: userId,
+      actor_name: profile.display_name ?? null,
+      details: { key_prefix: newKey.slice(0, 18) + "…" },
+    });
+
+    return { ingestKey: newKey };
   });

@@ -10,9 +10,10 @@ interface GraphSvgProps {
   resources: RadiusResource[];
   edges: RadiusEdge[];
   highlight?: Highlight;
+  onSelectNode?: (id: string) => void;
 }
 
-export function GraphSvg({ resources, edges, highlight }: GraphSvgProps) {
+export function GraphSvg({ resources, edges, highlight, onSelectNode }: GraphSvgProps) {
   const byId = new Map(resources.map((r) => [r.id, r]));
   const edgesToDraw = edges.slice();
   const newEdge =
@@ -100,7 +101,11 @@ export function GraphSvg({ resources, edges, highlight }: GraphSvgProps) {
           : TYPE_COLOR[n.type];
         const r = isTarget ? 11 : highlight ? 7 : 8;
         return (
-          <g key={n.id}>
+          <g
+            key={n.id}
+            style={onSelectNode ? { cursor: "pointer" } : undefined}
+            onClick={onSelectNode ? () => onSelectNode(n.id) : undefined}
+          >
             <circle
               cx={n.x}
               cy={n.y}

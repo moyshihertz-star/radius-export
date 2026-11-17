@@ -1,6 +1,6 @@
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { parseIacPayload } from "./iac-parser";
-import { getLocalStore, isSupabaseConfigured } from "./local-store.server";
+import { getLocalStore, isSupabaseConfigured, saveLocalStore } from "./local-store.server";
 import { normalizeWeights, simulate } from "./radius-engine.server";
 import type { PolicyWeights, RadiusEdge, RadiusResource } from "./radius-types";
 
@@ -108,6 +108,7 @@ export async function handlePublicIngest(request: Request): Promise<Response> {
       } as unknown as Json,
       created_at: nowIso,
     });
+    saveLocalStore();
 
     return jsonResponse({
       id,

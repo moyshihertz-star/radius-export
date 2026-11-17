@@ -8,6 +8,7 @@ import { GraphSvg } from "@/components/radius/GraphSvg";
 import { MapWalkthrough } from "@/components/radius/MapWalkthrough";
 import { computeAutoLayout } from "@/lib/graph-layout";
 import { useI18n } from "@/lib/i18n";
+import { bfsConsumers } from "@/lib/radius-engine.server";
 import { syncCloudTopology } from "@/lib/radius.functions";
 
 export const Route = createFileRoute("/_authenticated/app/map")({
@@ -40,6 +41,7 @@ function MapPage() {
   const [autoLayout, setAutoLayout] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [topologyJson, setTopologyJson] = useState("");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const syncMutation = useMutation({
     mutationFn: (payload: string) => syncFn({ data: { payload } }),
@@ -147,7 +149,67 @@ function MapPage() {
           {isLoading || !data ? (
             <div className="empty-note">{t("map.loading")}</div>
           ) : (
-            <GraphSvg resources={displayedResources} edges={data.edges} />
+            <>
+              <GraphSvg
+                resources={displayedResources}
+                edges={data.edges}
+                onSelectNode={(id) => setSelectedNodeId((cur) => (cur === id ? null : id))}
+                highlight={
+                  selectedNodeId
+                    ? {
+                        targetId: selectedNodeId,
+                        hitIds: new Set([
+                          selectedNodeId,
+                          ...bfsConsumers(selectedNodeId, data.edges, 3).map((c) => c.id),
+                        ]),
+                        newAccessId: null,
+                      }
+                    : undefined
+                }
+              />
+              {selectedNodeId ? (
+                (() => {
+                  const node = data.resources.find((r) => r.id === selectedNodeId);
+                  if (!node) return null;
+                  const hits = bfsConsumers(selectedNodeId, data.edges, 3);
+                  return (
+                    <div className="subcard" style={{ marginTop: 14, marginBottom: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div>
+                          <div className="detail-title">{node.name}</div>
+                          <div className="detail-sub">
+                            <span className="mono">{node.type}</span> ·{" "}
+                            {t(`sensitivity.${node.sensitivity}`)} ·{" "}
+                            {t("detail.impacted", { count: hits.length })}
+                            {node.tags.length > 0 ? ` · [${node.tags.join(", ")}]` : ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          style={{ padding: "5px 12px", fontSize: 12 }}
+                          onClick={() => setSelectedNodeId(null)}
+                        >
+                          {t("map.clearSelection")}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="live-note" style={{ marginTop: 10 }}>
+                  {t("map.clickHint")}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

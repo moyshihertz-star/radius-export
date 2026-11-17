@@ -120,17 +120,17 @@ verdict:  score ≥ threshold (70)        → high
    - הפעילו כניסה אנונימית (Anonymous sign-ins) בהגדרות האימות.
    - הפעילו Realtime על הטבלאות `changes`, `hypotheses`, `agent_runs`.
 
-## 7. מה עובד בפועל מול מה שעדיין לא (כנות)
+## 7. סטטוס המימוש בפרויקט
 
 | נושא | סטטוס |
 |---|---|
-| מנוע BFS + ניקוד בשרת | ✅ עובד, עם הנוסחה בסעיף 4 |
-| RLS + multi-tenancy + דמו אוטומטי | ✅ עובד |
+| מנוע BFS ($O(\|V\|+\|E\|)$) + ניקוד בשרת + הקפאת ציון היסטורי | ✅ עובד ומכוסה בבדיקות |
+| RLS + אינדקסים + דמו אוטומטי + מצב מקומי עמיד (`.radius-local-db.json`) | ✅ עובד |
 | Realtime בין חברי ארגון | ✅ עובד |
-| מסכי changes / map / policy / hypotheses / runs | ✅ עובדים |
+| מסכי changes / map / policy (עם תצוגה מקדימה חיה) / hypotheses / runs / audit | ✅ עובדים |
 | i18n אנגלית/עברית + RTL | ✅ עובד |
-| חיבור לענן אמיתי (AWS/GCP/Azure) | ❌ לא קיים — כל הנתונים מוזנים ידנית/דמו |
-| נקודת קצה `/api/public/ingest` ל-webhook מ-CI | ❌ לא מומשה (ingest_key קיים בטבלה בלבד) |
-| parsing של terraform plan / IAM policies | ❌ לא קיים — "wildcard" הוא checkbox ידני |
-| בדיקות אוטומטיות למנוע | ❌ אין tests בפרויקט |
-| הסוכן החיצוני שמעדכן היפותזות | ❌ חיצוני לאפליקציה; הנתונים כרגע seed |
+| סנכרון טופולוגיית ענן מ-JSON / Terraform State (`+ Sync topology JSON` + סידור אוטומטי) | ✅ עובד |
+| נקודת קצה `POST /api/public/ingest` ל-webhook מ-CI + GitHub Action | ✅ עובד |
+| ניתוח אוטומטי של `terraform show -json` ו-AWS IAM Policy JSON (`src/lib/iac-parser.ts`) | ✅ עובד |
+| בדיקות יחידה אוטומטיות (`npm test` ב-`src/lib/__tests__/radius.test.ts`) | ✅ 21 בדיקות עוברות |
+| סוכן היפותזות אוטונומי (`runHypothesesAgent` ב-`src/lib/agent-runner.server.ts`) | ✅ עובד (ניתן להרצה מידית ממסך ריצות סוכן) |

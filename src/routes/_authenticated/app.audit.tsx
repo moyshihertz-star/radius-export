@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { getAuditAndCi } from "@/lib/radius.functions";
+import { CONSOLE_QUERY_KEY } from "@/hooks/useConsole";
+import { getAuditAndCi, rotateIngestKey } from "@/lib/radius.functions";
 import { useI18n } from "@/lib/i18n";
 import type { AuditAndCiData, AuditEntry } from "@/lib/radius-types";
 
@@ -40,11 +41,56 @@ function toCsv(entries: AuditEntry[]): string {
 
 function AuditPage() {
   const fetchAudit = useServerFn(getAuditAndCi);
+  const rotateKeyFn = useServerFn(rotateIngestKey);
+  const queryClient = useQueryClient();
   const { t, locale } = useI18n();
 
   const { data, isLoading, error } = useQuery<AuditAndCiData>({
     queryKey: ["radius", "audit-ci"],
     queryFn: () => fetchAudit(),
+  });
+
+  const rotateMutation = useMutation({
+    mutationFn: () => rotateKeyFn(),
+    onSuccess: async () => {
+      toast.success(t("audit.keyRotated"));
+      await queryClient.invalidateQueries({ queryKey: ["radius", "audit-ci"] });
+    },
+  });
+
+  const testCiMutation = useMutation({
+    mutationFn: async (ingestKey: string) => {
+      const res = await fetch("/api/public/ingest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-radius-ingest-key": ingestKey,
+        },
+        body: JSON.stringify({
+          title: "ci: terraform plan aws_iam_role.payments",
+          author: "github-actions[bot]",
+          target: "iam-role-payments",
+          iamPolicy: {
+            Statement: [
+              {
+                Effect: "Allow",
+                Action: ["s3:*", "rds:*"],
+                Resource: ["arn:aws:rds:::db:customer-db"],
+              },
+            ],
+          },
+        }),
+      });
+      if (!res.ok) throw new Error("Ingest failed");
+      return (await res.json()) as { score: number; verdict: string };
+    },
+    onSuccess: async (res) => {
+      toast.success(t("audit.testCiSuccess", { score: res.score, verdict: res.verdict }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["radius", "audit-ci"] }),
+        queryClient.invalidateQueries({ queryKey: CONSOLE_QUERY_KEY }),
+      ]);
+    },
   });
 
   if (isLoading) return <div className="empty-note">{t("common.loading")}</div>;
@@ -175,18 +221,30 @@ function AuditPage() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: 8,
+                flexWrap: "wrap",
               }}
             >
               <span className="mono">{data.ingestKey || "—"}</span>
               {data.ingestKey && (
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  style={{ padding: "4px 10px", fontSize: 12 }}
-                  onClick={() => copyText(data.ingestKey)}
-                >
-                  {t("audit.copy")}
-                </button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ padding: "4px 10px", fontSize: 12 }}
+                    onClick={() => copyText(data.ingestKey)}
+                  >
+                    {t("audit.copy")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ padding: "4px 10px", fontSize: 12 }}
+                    disabled={rotateMutation.isPending}
+                    onClick={() => rotateMutation.mutate()}
+                  >
+                    {t("audit.rotateKey")}
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -198,19 +256,32 @@ function AuditPage() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 marginBottom: 8,
+                gap: 8,
+                flexWrap: "wrap",
               }}
             >
               <span className="diff-col-title" style={{ marginBottom: 0 }}>
                 {t("audit.exampleCurl")}
               </span>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ padding: "4px 10px", fontSize: 12 }}
-                onClick={() => copyText(curlSnippet)}
-              >
-                {t("audit.copy")}
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn-run"
+                  style={{ padding: "4px 12px", fontSize: 12 }}
+                  disabled={testCiMutation.isPending || !data.ingestKey}
+                  onClick={() => testCiMutation.mutate(data.ingestKey)}
+                >
+                  {testCiMutation.isPending ? t("audit.testingCi") : t("audit.testCiBtn")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ padding: "4px 10px", fontSize: 12 }}
+                  onClick={() => copyText(curlSnippet)}
+                >
+                  {t("audit.copy")}
+                </button>
+              </div>
             </div>
             <pre className="run-summary mono" style={{ whiteSpace: "pre-wrap" }}>
               {curlSnippet}

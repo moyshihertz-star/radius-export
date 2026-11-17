@@ -80,6 +80,8 @@ const EN: Record<string, string> = {
   "detail.decidedBlocked": "Blocked on {date}",
   "detail.notePlaceholder":
     "Optional reviewer justification / ticket reference (logged to audit trail)…",
+  "detail.noteRequiredPlaceholder":
+    "Required for high-risk approval: enter justification / ticket (min 3 chars)…",
 
   "bd.base": "Baseline change in the production environment",
   "bd.targetHigh": "Target resource is classified as high sensitivity",
@@ -120,6 +122,9 @@ const EN: Record<string, string> = {
   "map.syncAction": "Import topology",
   "map.syncSuccess": "Topology synced ({res} resources, {edges} edges added)",
   "map.syncError": "Invalid topology JSON",
+  "map.inspectorTitle": "Selected resource blast radius",
+  "map.clearSelection": "Clear selection",
+  "map.clickHint": "Click any node on the map to inspect its 3-hop upstream blast radius.",
 
   "walk.title": "Example: what happens when this change ships",
   "walk.play": "Play example",
@@ -239,6 +244,11 @@ const EN: Record<string, string> = {
   "audit.exampleCurl": "Example CI command",
   "audit.copy": "Copy",
   "audit.copied": "Copied to clipboard",
+  "audit.testCiBtn": "Send test CI payload",
+  "audit.testingCi": "Sending…",
+  "audit.testCiSuccess": "CI payload ingested — score {score} ({verdict})",
+  "audit.rotateKey": "Rotate key",
+  "audit.keyRotated": "Ingest key rotated",
 };
 
 const HE: Record<string, string> = {
@@ -305,6 +315,7 @@ const HE: Record<string, string> = {
   "detail.decidedApproved": "אושר ב-{date}",
   "detail.decidedBlocked": "נחסם ב-{date}",
   "detail.notePlaceholder": "הערת מאשר / מספר טיקט (נשמר ביומן הביקורת)…",
+  "detail.noteRequiredPlaceholder": "חובה לאישור סיכון גבוה: הזן נימוק / טיקט (לפחות 3 תווים)…",
 
   "bd.base": "שינוי בסיסי בסביבת production",
   "bd.targetHigh": "משאב היעד מסווג ברגישות גבוהה",
@@ -344,6 +355,9 @@ const HE: Record<string, string> = {
   "map.syncAction": "ייבא טופולוגיה",
   "map.syncSuccess": "הטופולוגיה סונכרנה ({res} משאבים, {edges} קשרים נוספו)",
   "map.syncError": "קובץ טופולוגיה לא תקין",
+  "map.inspectorTitle": "תפוצת השפעה למשאב הנבחר",
+  "map.clearSelection": "נקה בחירה",
+  "map.clickHint": "לחץ על כל צומת במפה כדי לבדוק את תפוצת ההשפעה שלו עד 3 קפיצות.",
 
   "walk.title": "דוגמה: מה קורה כששינוי כזה יוצא לדרך",
   "walk.play": "הרץ דוגמה",
@@ -459,6 +473,11 @@ const HE: Record<string, string> = {
   "audit.exampleCurl": "דוגמת הרצה מ-CI",
   "audit.copy": "העתק",
   "audit.copied": "הועתק ללוח",
+  "audit.testCiBtn": "שלח בדיקת CI עכשיו",
+  "audit.testingCi": "שולח…",
+  "audit.testCiSuccess": "שינוי CI נקלט — ציון {score} ({verdict})",
+  "audit.rotateKey": "החלף מפתח",
+  "audit.keyRotated": "מפתח ה-Ingest הוחלף",
 };
 
 const DICTS: Record<Lang, Record<string, string>> = { en: EN, he: HE };
