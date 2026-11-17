@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GraphSvg } from "./GraphSvg";
 import { useI18n } from "@/lib/i18n";
 import type { ConsoleData, RadiusChange } from "@/lib/radius-types";
@@ -6,13 +6,18 @@ import type { ConsoleData, RadiusChange } from "@/lib/radius-types";
 interface Props {
   change: RadiusChange;
   data: ConsoleData;
-  onDecide: (decision: "approved" | "blocked") => void;
+  onDecide: (decision: "approved" | "blocked", note?: string) => void;
   deciding: boolean;
 }
 
 export function ChangeDetail({ change, data, onDecide, deciding }: Props) {
   const { t, locale } = useI18n();
+  const [note, setNote] = useState("");
   const byId = useMemo(() => new Map(data.resources.map((r) => [r.id, r])), [data.resources]);
+
+  useEffect(() => {
+    setNote("");
+  }, [change.id]);
   const result = change.simulation;
   const targetNode = byId.get(change.targetResourceId);
   const newResourceNode = result.newResourceId ? byId.get(result.newResourceId) : null;
@@ -146,16 +151,31 @@ export function ChangeDetail({ change, data, onDecide, deciding }: Props) {
       </div>
 
       <div className="action-row">
+        <input
+          type="text"
+          placeholder={t("detail.notePlaceholder")}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          style={{
+            flex: "1 1 240px",
+            background: "var(--panel-2)",
+            border: "1px solid var(--hairline)",
+            color: "var(--fg)",
+            padding: "9px 12px",
+            borderRadius: 6,
+            fontSize: 13,
+          }}
+        />
         <button
           className="btn-approve"
-          onClick={() => onDecide("approved")}
+          onClick={() => onDecide("approved", note)}
           disabled={deciding || change.status === "approved"}
         >
           {t("detail.approve")}
         </button>
         <button
           className="btn-block"
-          onClick={() => onDecide("blocked")}
+          onClick={() => onDecide("blocked", note)}
           disabled={deciding || change.status === "blocked"}
         >
           {t("detail.block")}

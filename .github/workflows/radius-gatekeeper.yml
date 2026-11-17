@@ -1,0 +1,48 @@
+name: Radius Blast Radius Gatekeeper
+
+on:
+  pull_request:
+    paths:
+      - "**/*.tf"
+      - "**/*.json"
+
+jobs:
+  blast-radius-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Send Terraform / IAM plan to Radius
+        env:
+          RADIUS_URL: ${{ secrets.RADIUS_URL }}
+          RADIUS_INGEST_KEY: ${{ secrets.RADIUS_INGEST_KEY }}
+        run: |
+          if [ -z "$RADIUS_URL" ] || [ -z "$RADIUS_INGEST_KEY" ]; then
+            echo "Set RADIUS_URL and RADIUS_INGEST_KEY in repository secrets to enable CI blast-radius gating."
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg title "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" \
+            --arg author "${{ github.actor }}" \
+            '{title: $title, author: $author, scopeBroadened: false}')
+
+          RESPONSE=$(curl -sS -X POST "${RADIUS_URL%/}/api/public/ingest" \
+            -H "Content-Type: application/json" \
+            -H "x-radius-ingest-key: $RADIUS_INGEST_KEY" \
+            -d "$PAYLOAD")
+
+          echo "$RESPONSE" | jq .
+          REQUIRES_APPROVAL=$(echo "$RESPONSE" | jq -r '.requiresApproval // false')
+          SCORE=$(echo "$RESPONSE" | jq -r '.score // 0')
+          VERDICT=$(echo "$RESPONSE" | jq -r '.verdict // "low"')
+
+          echo "### Radius Blast Radius Analysis" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Risk Score:** ${SCORE} / 100" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Verdict:** ${VERDICT}" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$REQUIRES_APPROVAL" = "true" ]; then
+            echo "::error::High-risk blast radius (score ${SCORE}). Manual approval required in Radius console."
+            exit 1
+          fi

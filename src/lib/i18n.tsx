@@ -78,6 +78,8 @@ const EN: Record<string, string> = {
   "detail.block": "Block change",
   "detail.decidedApproved": "Approved on {date}",
   "detail.decidedBlocked": "Blocked on {date}",
+  "detail.notePlaceholder":
+    "Optional reviewer justification / ticket reference (logged to audit trail)…",
 
   "bd.base": "Baseline change in the production environment",
   "bd.targetHigh": "Target resource is classified as high sensitivity",
@@ -111,6 +113,13 @@ const EN: Record<string, string> = {
   "map.filterPii": "PII / Compliance",
   "map.autoLayout": "Auto-layout",
   "map.savedLayout": "Saved layout",
+  "map.syncBtn": "+ Sync topology JSON",
+  "map.syncTitle": "Sync cloud topology / Terraform state",
+  "map.syncPlaceholder":
+    'Paste {"resources":[{"key":"orders-db","type":"database","sensitivity":"high","tags":["pii"]}],"edges":[{"from":"payments-service","to":"orders-db"}]}…',
+  "map.syncAction": "Import topology",
+  "map.syncSuccess": "Topology synced ({res} resources, {edges} edges added)",
+  "map.syncError": "Invalid topology JSON",
 
   "walk.title": "Example: what happens when this change ships",
   "walk.play": "Play example",
@@ -295,6 +304,7 @@ const HE: Record<string, string> = {
   "detail.block": "חסום שינוי",
   "detail.decidedApproved": "אושר ב-{date}",
   "detail.decidedBlocked": "נחסם ב-{date}",
+  "detail.notePlaceholder": "הערת מאשר / מספר טיקט (נשמר ביומן הביקורת)…",
 
   "bd.base": "שינוי בסיסי בסביבת production",
   "bd.targetHigh": "משאב היעד מסווג ברגישות גבוהה",
@@ -328,6 +338,12 @@ const HE: Record<string, string> = {
   "map.filterPii": "PII / ציות",
   "map.autoLayout": "סידור אוטומטי",
   "map.savedLayout": "סידור שמור",
+  "map.syncBtn": "+ סנכרון טופולוגיה",
+  "map.syncTitle": "סנכרון טופולוגיית ענן / Terraform state",
+  "map.syncPlaceholder": 'הדבק {"resources":[...],"edges":[...]}…',
+  "map.syncAction": "ייבא טופולוגיה",
+  "map.syncSuccess": "הטופולוגיה סונכרנה ({res} משאבים, {edges} קשרים נוספו)",
+  "map.syncError": "קובץ טופולוגיה לא תקין",
 
   "walk.title": "דוגמה: מה קורה כששינוי כזה יוצא לדרך",
   "walk.play": "הרץ דוגמה",

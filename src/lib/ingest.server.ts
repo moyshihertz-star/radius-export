@@ -1,5 +1,6 @@
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { parseIacPayload } from "./iac-parser";
+import { getLocalStore, isSupabaseConfigured } from "./local-store.server";
 import { normalizeWeights, simulate } from "./radius-engine.server";
 import type { PolicyWeights, RadiusEdge, RadiusResource } from "./radius-types";
 
@@ -29,6 +30,97 @@ export async function handlePublicIngest(request: Request): Promise<Response> {
     rawBody = await request.json();
   } catch {
     return jsonResponse({ error: "Invalid JSON request body" }, 400);
+  }
+
+  if (!isSupabaseConfigured()) {
+    const store = getLocalStore();
+    if (ingestKey !== store.org.ingest_key) {
+      return jsonResponse({ error: "Invalid ingest key" }, 401);
+    }
+    const mappedResources: RadiusResource[] = store.resources.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name,
+      type: r.type,
+      sensitivity: r.sensitivity,
+      tags: r.tags ?? [],
+      x: r.x,
+      y: r.y,
+    }));
+    const mappedEdges: RadiusEdge[] = store.edges.map((e) => ({
+      from: e.from_resource_id,
+      to: e.to_resource_id,
+    }));
+
+    let parsed;
+    try {
+      parsed = parseIacPayload(rawBody, mappedResources);
+    } catch (err) {
+      return jsonResponse(
+        { error: err instanceof Error ? err.message : "Could not parse IaC payload" },
+        400,
+      );
+    }
+
+    const result = simulate(
+      {
+        targetId: parsed.targetResourceId,
+        newAccessId: parsed.newAccessResourceId,
+        scopeBroadened: parsed.scopeBroadened,
+      },
+      mappedResources,
+      mappedEdges,
+      store.weights,
+    );
+
+    const id = crypto.randomUUID();
+    const nowIso = new Date().toISOString();
+    store.changes.unshift({
+      id,
+      org_id: store.org.id,
+      title: parsed.title,
+      author: parsed.author,
+      target_resource_id: parsed.targetResourceId,
+      new_access_resource_id: parsed.newAccessResourceId,
+      scope_broadened: parsed.scopeBroadened,
+      status: "pending",
+      score: result.score,
+      verdict: result.verdict,
+      breakdown: result.breakdown as unknown as Json,
+      source: "ci",
+      decided_by: null,
+      decided_at: null,
+      created_at: nowIso,
+    });
+
+    store.auditLog.unshift({
+      id: crypto.randomUUID(),
+      org_id: store.org.id,
+      change_id: id,
+      action: "ingested_from_ci",
+      actor_id: null,
+      actor_name: parsed.author,
+      details: {
+        score: result.score,
+        verdict: result.verdict,
+        detected_actions: parsed.detectedActions,
+        detected_resources: parsed.detectedResources,
+      } as unknown as Json,
+      created_at: nowIso,
+    });
+
+    return jsonResponse({
+      id,
+      organization: store.org.name,
+      title: parsed.title,
+      score: result.score,
+      verdict: result.verdict,
+      threshold: store.weights.threshold,
+      requiresApproval: result.verdict === "high",
+      impactedCount: result.consumers.length,
+      consumers: result.consumers,
+      breakdown: result.breakdown,
+    });
   }
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

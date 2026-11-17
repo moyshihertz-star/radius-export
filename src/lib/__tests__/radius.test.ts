@@ -16,7 +16,7 @@ import {
   summarize,
 } from "../hypotheses-engine.server.ts";
 import { daysLeftTone } from "../hypotheses-types.ts";
-import { parseIacPayload } from "../iac-parser.ts";
+import { parseIacPayload, parseTopologyPayload } from "../iac-parser.ts";
 import { evaluateHypothesisUsage } from "../agent-runner.server.ts";
 import { computeAutoLayout } from "../graph-layout.ts";
 
@@ -516,6 +516,22 @@ describe("enterprise: iac-parser (parseIacPayload)", () => {
     assert.equal(parsed.targetResourceId, "admin-console");
     assert.equal(parsed.newAccessResourceId, "s3-payments-bucket");
     assert.equal(parsed.scopeBroadened, false);
+  });
+
+  it("parses cloud topology JSON (resources + edges + Terraform types)", () => {
+    const topo = parseTopologyPayload({
+      resources: [
+        { name: "orders-api", type: "aws_ecs_service", depends_on: ["aws_db_instance.orders-db"] },
+        { key: "orders-db", name: "orders-db", type: "aws_db_instance", tags: ["prod", "pii"] },
+      ],
+      edges: [{ from: "billing-api", to: "orders-api" }],
+    });
+
+    assert.equal(topo.resources.length, 2);
+    assert.equal(topo.resources[0]?.type, "service");
+    assert.equal(topo.resources[1]?.type, "database");
+    assert.equal(topo.resources[1]?.sensitivity, "high");
+    assert.equal(topo.edges.length, 2);
   });
 });
 

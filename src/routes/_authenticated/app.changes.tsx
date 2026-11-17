@@ -41,11 +41,15 @@ function ChangesPage() {
   }, [data]);
 
   const decideMutation = useMutation({
-    mutationFn: (vars: { changeId: string; decision: "approved" | "blocked" }) =>
-      decideFn({ data: vars }),
+    mutationFn: (vars: {
+      changeId: string;
+      decision: "approved" | "blocked";
+      note?: string | undefined;
+    }) => decideFn({ data: vars }),
     onSuccess: (_r, vars) => {
       toast.success(t(vars.decision === "approved" ? "changes.approved" : "changes.blocked"));
       void queryClient.invalidateQueries({ queryKey: CONSOLE_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["radius", "audit-ci"] });
     },
     onError: () => toast.error(t("changes.actionFailed")),
   });
@@ -107,7 +111,9 @@ function ChangesPage() {
           change={selected}
           data={data}
           deciding={decideMutation.isPending}
-          onDecide={(decision) => decideMutation.mutate({ changeId: selected.id, decision })}
+          onDecide={(decision, note) =>
+            decideMutation.mutate({ changeId: selected.id, decision, note })
+          }
         />
       ) : (
         <div className="panel" style={{ padding: 22 }}>

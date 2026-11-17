@@ -17,6 +17,7 @@ export function useConsole() {
   });
 
   useEffect(() => {
+    if (!import.meta.env["VITE_SUPABASE_URL"]) return;
     // Unique topic per hook instance: several components use this hook at once,
     // and reusing one topic makes the second subscription throw.
     const channel = supabase

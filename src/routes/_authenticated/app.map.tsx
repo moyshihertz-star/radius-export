@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useConsole } from "@/hooks/useConsole";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { CONSOLE_QUERY_KEY, useConsole } from "@/hooks/useConsole";
 import { GraphSvg } from "@/components/radius/GraphSvg";
 import { MapWalkthrough } from "@/components/radius/MapWalkthrough";
 import { computeAutoLayout } from "@/lib/graph-layout";
 import { useI18n } from "@/lib/i18n";
+import { syncCloudTopology } from "@/lib/radius.functions";
 
 export const Route = createFileRoute("/_authenticated/app/map")({
   head: () => ({
@@ -29,9 +33,24 @@ type FilterMode = "all" | "high" | "pii";
 function MapPage() {
   const { data, isLoading } = useConsole();
   const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const syncFn = useServerFn(syncCloudTopology);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
   const [autoLayout, setAutoLayout] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [topologyJson, setTopologyJson] = useState("");
+
+  const syncMutation = useMutation({
+    mutationFn: (payload: string) => syncFn({ data: { payload } }),
+    onSuccess: async (res) => {
+      setSyncOpen(false);
+      setTopologyJson("");
+      toast.success(t("map.syncSuccess", { res: res.addedResources, edges: res.addedEdges }));
+      await queryClient.invalidateQueries({ queryKey: CONSOLE_QUERY_KEY });
+    },
+    onError: () => toast.error(t("map.syncError")),
+  });
 
   const displayedResources = useMemo(() => {
     if (!data) return [];
@@ -96,6 +115,14 @@ function MapPage() {
             >
               {autoLayout ? t("map.savedLayout") : t("map.autoLayout")}
             </button>
+            <button
+              type="button"
+              className="new-btn"
+              style={{ padding: "5px 12px", fontSize: 12 }}
+              onClick={() => setSyncOpen(true)}
+            >
+              {t("map.syncBtn")}
+            </button>
           </div>
         </div>
         <div className="map-legend">
@@ -126,6 +153,34 @@ function MapPage() {
       </div>
 
       {data && <MapWalkthrough data={data} />}
+
+      {syncOpen && (
+        <div className="modal-backdrop" onClick={() => setSyncOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{t("map.syncTitle")}</h3>
+            <textarea
+              className="keep-input mono"
+              rows={6}
+              placeholder={t("map.syncPlaceholder")}
+              value={topologyJson}
+              onChange={(e) => setTopologyJson(e.target.value)}
+            />
+            <div className="modal-actions" style={{ marginTop: 12 }}>
+              <button type="button" className="btn-ghost" onClick={() => setSyncOpen(false)}>
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn-run"
+                disabled={syncMutation.isPending || !topologyJson.trim()}
+                onClick={() => syncMutation.mutate(topologyJson)}
+              >
+                {t("map.syncAction")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

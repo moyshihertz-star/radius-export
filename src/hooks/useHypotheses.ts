@@ -13,6 +13,7 @@ function useRealtime(tables: string[], keys: readonly (readonly string[])[]) {
   const tableKey = tables.join(",");
 
   useEffect(() => {
+    if (!import.meta.env["VITE_SUPABASE_URL"]) return;
     const channel = supabase.channel(`radius-hyp-${Math.random().toString(36).slice(2)}`);
     for (const table of tableKey.split(",")) {
       channel.on("postgres_changes", { event: "*", schema: "public", table }, () => {

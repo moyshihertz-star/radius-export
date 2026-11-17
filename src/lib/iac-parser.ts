@@ -1,4 +1,17 @@
-import type { RadiusResource } from "./radius-types";
+import type { RadiusEdge, RadiusResource, ResourceType, Sensitivity } from "./radius-types";
+
+export interface ParsedTopologyNode {
+  key: string;
+  name: string;
+  type: ResourceType;
+  sensitivity: Sensitivity;
+  tags: string[];
+}
+
+export interface ParsedTopology {
+  resources: ParsedTopologyNode[];
+  edges: RadiusEdge[];
+}
 
 export interface ParsedIacChange {
   title: string;
@@ -249,4 +262,104 @@ export function parseIacPayload(rawInput: unknown, resources: RadiusResource[]):
     detectedActions,
     detectedResources,
   };
+}
+
+function inferTypeFromTfType(tfType: string): ResourceType {
+  const lower = tfType.toLowerCase();
+  if (lower.includes("role") || lower.includes("iam") || lower.includes("policy")) return "role";
+  if (
+    lower.includes("db") ||
+    lower.includes("rds") ||
+    lower.includes("dynamodb") ||
+    lower.includes("postgres")
+  ) {
+    return "database";
+  }
+  if (lower.includes("s3") || lower.includes("bucket") || lower.includes("storage"))
+    return "storage";
+  if (lower.includes("webhook") || lower.includes("external") || lower.includes("apigateway")) {
+    return "external";
+  }
+  return "service";
+}
+
+export function parseTopologyPayload(rawInput: unknown): ParsedTopology {
+  const obj =
+    typeof rawInput === "string"
+      ? (JSON.parse(rawInput) as Record<string, unknown>)
+      : (rawInput as Record<string, unknown>);
+
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("Topology payload must be a JSON object");
+  }
+
+  const resources: ParsedTopologyNode[] = [];
+  const edges: RadiusEdge[] = [];
+
+  const rawResources = Array.isArray(obj["resources"]) ? obj["resources"] : [];
+  for (const item of rawResources) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const rec = item as Record<string, unknown>;
+    const rawKey =
+      typeof rec["key"] === "string"
+        ? rec["key"]
+        : typeof rec["name"] === "string"
+          ? rec["name"]
+          : "";
+    if (!rawKey.trim()) continue;
+    const key = rawKey
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, "-");
+    const rawType = typeof rec["type"] === "string" ? rec["type"] : "service";
+    const validTypes: ResourceType[] = ["service", "role", "database", "storage", "external"];
+    const type: ResourceType = validTypes.includes(rawType as ResourceType)
+      ? (rawType as ResourceType)
+      : inferTypeFromTfType(rawType);
+    const rawSens = typeof rec["sensitivity"] === "string" ? rec["sensitivity"] : "medium";
+    const validSens: Sensitivity[] = ["high", "medium", "low"];
+    const sensitivity: Sensitivity = validSens.includes(rawSens as Sensitivity)
+      ? (rawSens as Sensitivity)
+      : type === "database" || type === "role"
+        ? "high"
+        : "medium";
+    const tags = toStringList(rec["tags"]);
+    resources.push({
+      key,
+      name: typeof rec["name"] === "string" && rec["name"].trim() ? rec["name"].trim() : key,
+      type,
+      sensitivity,
+      tags: tags.length > 0 ? tags : ["prod"],
+    });
+
+    for (const dep of toStringList(rec["depends_on"] ?? rec["dependencies"])) {
+      const depKey =
+        dep
+          .split(".")
+          .pop()
+          ?.trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-_]/g, "-") ?? "";
+      if (depKey && depKey !== key) {
+        edges.push({ from: key, to: depKey });
+      }
+    }
+  }
+
+  const rawEdges = Array.isArray(obj["edges"]) ? obj["edges"] : [];
+  for (const e of rawEdges) {
+    if (!e || typeof e !== "object" || Array.isArray(e)) continue;
+    const rec = e as Record<string, unknown>;
+    const from = typeof rec["from"] === "string" ? rec["from"].trim() : "";
+    const to = typeof rec["to"] === "string" ? rec["to"].trim() : "";
+    if (from && to && from !== to) {
+      edges.push({ from, to });
+    }
+  }
+
+  if (resources.length === 0) {
+    throw new Error("No valid resources found in topology JSON");
+  }
+
+  return { resources, edges };
 }
