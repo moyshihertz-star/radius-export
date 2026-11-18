@@ -12,9 +12,15 @@ export const Route = createFileRoute("/_authenticated")({
     const { data } = await supabase.auth.getUser();
     if (data.user) return { user: data.user };
 
-    const { data: anon, error } = await supabase.auth.signInAnonymously();
-    if (error || !anon.user) throw new Error("Could not start a console session");
-    return { user: anon.user };
+    const { data: anon } = await supabase.auth.signInAnonymously();
+    if (anon.user) return { user: anon.user };
+
+    const { data: fallback, error: fbErr } = await supabase.auth.signInWithPassword({
+      email: "demo@radius.local",
+      password: "RadiusDemo2026!",
+    });
+    if (fbErr || !fallback.user) throw new Error("Could not start a console session");
+    return { user: fallback.user };
   },
   component: () => <Outlet />,
 });

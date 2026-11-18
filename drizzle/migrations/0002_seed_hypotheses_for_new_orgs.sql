@@ -133,3 +133,6 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
+
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.seed_demo_hypotheses(uuid) FROM PUBLIC, anon, authenticated;

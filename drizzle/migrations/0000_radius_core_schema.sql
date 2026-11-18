@@ -35,6 +35,8 @@ SET search_path = public
 AS $$
   SELECT org_id FROM public.profiles WHERE id = (SELECT auth.uid())
 $$;
+REVOKE EXECUTE ON FUNCTION public.current_org_id() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_org_id() TO authenticated;
 
 CREATE INDEX profiles_org_idx ON public.profiles (org_id);
 

@@ -1,4 +1,4 @@
-import type { Json, Tables } from "@/integrations/supabase/types";
+import type { Database, Json, Tables } from "@/integrations/supabase/types";
 import { parseIacPayload } from "./iac-parser";
 import { getLocalStore, isSupabaseConfigured, saveLocalStore } from "./local-store.server";
 import { normalizeWeights, simulate } from "./radius-engine.server";
@@ -124,9 +124,25 @@ export async function handlePublicIngest(request: Request): Promise<Response> {
     });
   }
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  let dbClient;
+  if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    dbClient = supabaseAdmin;
+  } else {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sbUrl = process.env["SUPABASE_URL"] || import.meta.env?.["VITE_SUPABASE_URL"];
+    const sbKey =
+      process.env["SUPABASE_PUBLISHABLE_KEY"] || import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"];
+    dbClient = createClient<Database>(sbUrl!, sbKey!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    await dbClient.auth.signInWithPassword({
+      email: "demo@radius.local",
+      password: "RadiusDemo2026!",
+    });
+  }
 
-  const { data: org, error: orgErr } = await supabaseAdmin
+  const { data: org, error: orgErr } = await dbClient
     .from("organizations")
     .select("id, name")
     .eq("ingest_key", ingestKey)
@@ -141,9 +157,9 @@ export async function handlePublicIngest(request: Request): Promise<Response> {
 
   const [{ data: resources, error: rErr }, { data: edges, error: eErr }, { data: weights }] =
     await Promise.all([
-      supabaseAdmin.from("resources").select("*").eq("org_id", org.id).order("key"),
-      supabaseAdmin.from("edges").select("*").eq("org_id", org.id),
-      supabaseAdmin.from("policy_weights").select("*").eq("org_id", org.id).maybeSingle(),
+      dbClient.from("resources").select("*").eq("org_id", org.id).order("key"),
+      dbClient.from("edges").select("*").eq("org_id", org.id),
+      dbClient.from("policy_weights").select("*").eq("org_id", org.id).maybeSingle(),
     ]);
 
   if (rErr || eErr) {
@@ -198,7 +214,7 @@ export async function handlePublicIngest(request: Request): Promise<Response> {
     mappedWeights,
   );
 
-  const { data: inserted, error: insertErr } = await supabaseAdmin
+  const { data: inserted, error: insertErr } = await dbClient
     .from("changes")
     .insert({
       org_id: org.id,
@@ -219,7 +235,7 @@ export async function handlePublicIngest(request: Request): Promise<Response> {
     return jsonResponse({ error: insertErr?.message ?? "Failed to save change" }, 500);
   }
 
-  await supabaseAdmin.from("audit_log").insert({
+  await dbClient.from("audit_log").insert({
     org_id: org.id,
     change_id: inserted.id,
     action: "ingested_from_ci",

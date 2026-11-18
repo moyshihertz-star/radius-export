@@ -4,7 +4,10 @@ import type { Tables } from "@/integrations/supabase/types";
 import type { PolicyWeights } from "./radius-types";
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_PUBLISHABLE_KEY"]);
+  const url = process.env["SUPABASE_URL"] || import.meta.env?.["VITE_SUPABASE_URL"];
+  const key =
+    process.env["SUPABASE_PUBLISHABLE_KEY"] || import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"];
+  return Boolean(url && key);
 }
 
 const LOCAL_DB_PATH = resolve(process.cwd(), ".radius-local-db.json");
