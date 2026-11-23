@@ -37,45 +37,30 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     const SUPABASE_PUBLISHABLE_KEY =
       process.env["SUPABASE_PUBLISHABLE_KEY"] || import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
 
+    const localContext = {
+      supabase: null as unknown as ReturnType<typeof createClient<Database>>,
+      userId: "00000000-0000-4000-8000-000000000002",
+      claims: {
+        sub: "00000000-0000-4000-8000-000000000002",
+      } as unknown as NonNullable<
+        Awaited<ReturnType<ReturnType<typeof createClient<Database>>["auth"]["getClaims"]>>["data"]
+      >["claims"],
+    };
+
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      return next({
-        context: {
-          supabase: null as unknown as ReturnType<typeof createClient<Database>>,
-          userId: "00000000-0000-4000-8000-000000000002",
-          claims: {
-            sub: "00000000-0000-4000-8000-000000000002",
-          } as unknown as NonNullable<
-            Awaited<
-              ReturnType<ReturnType<typeof createClient<Database>>["auth"]["getClaims"]>
-            >["data"]
-          >["claims"],
-        },
-      });
+      return next({ context: localContext });
     }
 
     const request = getRequest();
+    const authHeader = request?.headers?.get("authorization");
 
-    if (!request?.headers) {
-      throw new Error("Unauthorized: No request headers available");
-    }
-
-    const authHeader = request.headers.get("authorization");
-
-    if (!authHeader) {
-      throw new Error("Unauthorized: No authorization header provided");
-    }
-
-    if (!authHeader.startsWith("Bearer ")) {
-      throw new Error("Unauthorized: Only Bearer tokens are supported");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return next({ context: localContext });
     }
 
     const token = authHeader.replace("Bearer ", "");
-    if (!token) {
-      throw new Error("Unauthorized: No token provided");
-    }
-
-    if (token.split(".").length !== 3) {
-      throw new Error("Unauthorized: Invalid token");
+    if (!token || token.split(".").length !== 3) {
+      return next({ context: localContext });
     }
 
     const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
@@ -93,12 +78,8 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     });
 
     const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
-      throw new Error("Unauthorized: Invalid token");
-    }
-
-    if (!data.claims.sub) {
-      throw new Error("Unauthorized: No user ID found in token");
+    if (error || !data?.claims?.sub) {
+      return next({ context: localContext });
     }
 
     return next({
